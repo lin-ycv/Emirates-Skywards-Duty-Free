@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dubai Duty Free Skywards Calculator</title>
+    <style>
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; 
+            max-width: 650px; 
+            margin: 2rem auto; 
+            padding: 0 1.5rem; 
+            color: #333; 
+            line-height: 1.6;
+        }
+        h1, h2 { color: #d71921; /* Emirates Red */ margin-top: 0; }
+        .card { 
+            border: 1px solid #e0e0e0; 
+            border-radius: 8px; 
+            padding: 1.5rem; 
+            margin-bottom: 1.5rem; 
+            background: #fff;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05); 
+        }
+        .flex-row { display: flex; gap: 1rem; margin-bottom: 1rem; flex-wrap: wrap; }
+        .input-group { display: flex; flex-direction: column; flex: 1; min-width: 140px; }
+        label { font-size: 0.85rem; font-weight: 600; margin-bottom: 0.4rem; color: #555; }
+        input[type="number"], input[type="text"] { 
+            padding: 0.6rem; 
+            border: 1px solid #ccc; 
+            border-radius: 4px; 
+            font-size: 1rem; 
+        }
+        button { 
+            background-color: #d71921; 
+            color: white; 
+            border: none; 
+            padding: 0.6rem 1.2rem; 
+            border-radius: 4px; 
+            cursor: pointer; 
+            font-size: 1rem; 
+            font-weight: 600; 
+            transition: background 0.2s; 
+        }
+        button:hover { background-color: #b0151b; }
+        .btn-remove { background-color: #757575; padding: 0.3rem 0.6rem; font-size: 0.85rem; }
+        .btn-remove:hover { background-color: #424242; }
+        
+        table { width: 100%; border-collapse: collapse; margin-bottom: 1rem; }
+        th, td { text-align: left; padding: 0.75rem; border-bottom: 1px solid #eee; }
+        th { background-color: #f9f9f9; font-weight: 600; color: #555; }
+        td.action-col { width: 60px; text-align: right; }
+        .empty-state { text-align: center; color: #888; padding: 1rem; font-style: italic; }
+
+        .total-box { 
+            background-color: #f8f9fa; 
+            padding: 1.5rem; 
+            border-radius: 8px; 
+            text-align: center; 
+            border: 2px solid #e0e0e0; 
+        }
+        .total-box h3 { margin: 0 0 0.5rem 0; font-size: 1.2rem; color: #333; }
+        .total-val { font-size: 2.5rem; font-weight: bold; color: #d71921; line-height: 1; margin-bottom: 0.5rem; }
+        .sub-val { font-size: 1.1rem; color: #555; font-weight: 600; }
+        .warning { color: #f57c00; font-size: 1.2rem; font-weight: bold; }
+        
+        .collapsible-header { cursor: pointer; display: flex; justify-content: space-between; align-items: center; }
+        .collapsible-content { display: none; margin-top: 1rem; padding-top: 1rem; border-top: 1px solid #eee; }
+        .collapsible-content.active { display: block; }
+        .toggle-icon { font-size: 0.8rem; color: #666; }
+
+        /* Advanced Balance Status Styles */
+        .balance-status { margin-top: 1rem; padding: 1rem; border-radius: 6px; background-color: #f8f9fa; border-left: 4px solid #ccc; }
+        .status-success { border-left-color: #2e7d32; }
+        .status-error { border-left-color: #d71921; }
+        .status-warning { border-left-color: #f57c00; }
+        .status-title { font-weight: bold; margin-bottom: 0.25rem; }
+        .status-detail { font-size: 0.95rem; color: #444; }
+    </style>
+</head>
+<body>
+
+    <h1>Emirates Skywards Calculator</h1>
+
+    <div class="card">
+        <div class="collapsible-header" onclick="toggleSettings()">
+            <h2 style="margin: 0; font-size: 1.2rem;">⚙️ Calculation Rules</h2>
+            <span class="toggle-icon" id="toggle-icon">▼ Click to edit</span>
+        </div>
+        <div class="collapsible-content" id="settings-content">
+            <div class="flex-row">
+                <div class="input-group">
+                    <label>Minimum AED</label>
+                    <input type="number" id="rule-min-aed" value="75" step="1" oninput="calculateTotal()">
+                </div>
+                <div class="input-group">
+                    <label>Base Skywards</label>
+                    <input type="number" id="rule-base-miles" value="4000" step="1" oninput="calculateTotal()">
+                </div>
+                <div class="input-group">
+                    <label>Miles per Add'l AED</label>
+                    <input type="number" id="rule-rate" value="53.33" step="0.01" oninput="calculateTotal()">
+                </div>
+            </div>
+            <small style="color: #666;">Changes apply immediately to your current list.</small>
+        </div>
+    </div>
+
+    <div class="card">
+        <h2>💳 Your Balance (Advanced)</h2>
+        <div class="input-group">
+            <label>Current Skywards Miles (Optional)</label>
+            <input type="number" id="current-miles" placeholder="e.g., 25000" min="0" step="1" oninput="calculateTotal()">
+        </div>
+        <div id="balance-info" class="balance-status" style="display: none;"></div>
+    </div>
+
+    <div class="card">
+        <h2>🛍️ Add Item</h2>
+        <form id="add-form" class="flex-row" style="align-items: flex-end;">
+            <div class="input-group" style="flex: 2;">
+                <label>Item Name (Optional)</label>
+                <input type="text" id="item-name" placeholder="e.g., Perfume">
+            </div>
+            <div class="input-group" style="flex: 1;">
+                <label>Price (AED)</label>
+                <input type="number" id="item-price" min="0.01" step="0.01" required placeholder="0.00">
+            </div>
+            <button type="submit">Add</button>
+        </form>
+    </div>
+
+    <div class="card">
+        <h2>🛒 Shopping List</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Item</th>
+                    <th>Price (AED)</th>
+                    <th class="action-col"></th>
+                </tr>
+            </thead>
+            <tbody id="list-body">
+                <tr><td colspan="3" class="empty-state">Your list is empty.</td></tr>
+            </tbody>
+        </table>
+    </div>
+
+    <div class="total-box">
+        <h3>Total Required</h3>
+        <div id="miles-result" class="total-val">0 Miles</div>
+        <div id="aed-result" class="sub-val">Total: 0.00 AED</div>
+    </div>
+
+    <script>
+        let items = [];
+
+        // Toggle Settings
+        function toggleSettings() {
+            const content = document.getElementById('settings-content');
+            const icon = document.getElementById('toggle-icon');
+            content.classList.toggle('active');
+            icon.textContent = content.classList.contains('active') ? '▲ Hide' : '▼ Click to edit';
+        }
+
+        // Form Submission
+        document.getElementById('add-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const nameInput = document.getElementById('item-name');
+            const priceInput = document.getElementById('item-price');
+            
+            const name = nameInput.value.trim() || `Item ${items.length + 1}`;
+            const price = parseFloat(priceInput.value);
+
+            if (!isNaN(price) && price > 0) {
+                items.push({ name, price });
+                nameInput.value = '';
+                priceInput.value = '';
+                nameInput.focus();
+                renderList();
+            }
+        });
+
+        // Remove Item
+        function removeItem(index) {
+            items.splice(index, 1);
+            renderList();
+        }
+
+        // Render Table
+        function renderList() {
+            const tbody = document.getElementById('list-body');
+            tbody.innerHTML = '';
+
+            if (items.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="3" class="empty-state">Your list is empty.</td></tr>';
+            } else {
+                items.forEach((item, index) => {
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td>${item.name}</td>
+                        <td>${item.price.toFixed(2)}</td>
+                        <td class="action-col"><button class="btn-remove" onclick="removeItem(${index})">X</button></td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            }
+            calculateTotal();
+        }
+
+        // Core Calculation
+        function calculateTotal() {
+            const minAed = parseFloat(document.getElementById('rule-min-aed').value) || 0;
+            const baseMiles = parseFloat(document.getElementById('rule-base-miles').value) || 0;
+            const rate = parseFloat(document.getElementById('rule-rate').value) || 0;
+            const currentMilesInput = document.getElementById('current-miles').value;
+            
+            const totalAed = items.reduce((sum, item) => sum + item.price, 0);
+            
+            const milesResultEl = document.getElementById('miles-result');
+            const aedResultEl = document.getElementById('aed-result');
+            const balanceInfoEl = document.getElementById('balance-info');
+
+            aedResultEl.textContent = `Total: ${totalAed.toFixed(2)} AED`;
+            
+            let totalMilesNeeded = 0;
+
+            // Handle main calculator display
+            if (totalAed === 0) {
+                milesResultEl.textContent = '0 Miles';
+                milesResultEl.className = 'total-val';
+            } else if (totalAed < minAed) {
+                milesResultEl.textContent = `Not Eligible`;
+                milesResultEl.className = 'total-val warning';
+                aedResultEl.textContent = `Total: ${totalAed.toFixed(2)} AED (Minimum ${minAed} AED required)`;
+            } else {
+                const additionalAed = totalAed - minAed;
+                totalMilesNeeded = Math.ceil(baseMiles + (additionalAed * rate));
+                milesResultEl.textContent = `${totalMilesNeeded.toLocaleString()} Miles`;
+                milesResultEl.className = 'total-val';
+            }
+
+            // Handle advanced balance logic
+            if (currentMilesInput !== '') {
+                const currentMiles = parseFloat(currentMilesInput) || 0;
+                balanceInfoEl.style.display = 'block';
+                
+                let maxAed = 0;
+                if (currentMiles >= baseMiles) {
+                    maxAed = minAed + ((currentMiles - baseMiles) / rate);
+                }
+
+                if (currentMiles < baseMiles) {
+                    balanceInfoEl.className = 'balance-status status-error';
+                    balanceInfoEl.innerHTML = `
+                        <div class="status-title" style="color: #d71921;">❌ Insufficient Miles</div>
+                        <div class="status-detail">You need at least <strong>${baseMiles.toLocaleString()} miles</strong> to make a purchase at Dubai Duty Free.</div>
+                    `;
+                } else {
+                    const remainingAed = maxAed - totalAed;
+
+                    if (totalAed === 0) {
+                        balanceInfoEl.className = 'balance-status status-success';
+                        balanceInfoEl.innerHTML = `
+                            <div class="status-title" style="color: #2e7d32;">✅ Ready to Shop</div>
+                            <div class="status-detail">You can spend up to <strong>${maxAed.toFixed(2)} AED</strong> with your current balance.</div>
+                        `;
+                    } else if (totalAed < minAed) {
+                        balanceInfoEl.className = 'balance-status status-warning';
+                        balanceInfoEl.innerHTML = `
+                            <div class="status-title" style="color: #f57c00;">⚠️ Minimum Not Reached</div>
+                            <div class="status-detail">Add <strong>${(minAed - totalAed).toFixed(2)} AED</strong> more to your cart to use miles. Your total allowance is ${maxAed.toFixed(2)} AED.</div>
+                        `;
+                    } else {
+                        if (currentMiles >= totalMilesNeeded) {
+                            balanceInfoEl.className = 'balance-status status-success';
+                            balanceInfoEl.innerHTML = `
+                                <div class="status-title" style="color: #2e7d32;">✅ You have enough miles!</div>
+                                <div class="status-detail">You can add <strong>${remainingAed.toFixed(2)} AED</strong> more to your list.</div>
+                            `;
+                        } else {
+                            balanceInfoEl.className = 'balance-status status-error';
+                            balanceInfoEl.innerHTML = `
+                                <div class="status-title" style="color: #d71921;">❌ Not enough miles</div>
+                                <div class="status-detail">You need <strong>${(totalMilesNeeded - currentMiles).toLocaleString()}</strong> more miles to cover this list.</div>
+                            `;
+                        }
+                    }
+                }
+            } else {
+                balanceInfoEl.style.display = 'none';
+            }
+        }
+    </script>
+<a href="https://www.dubaidutyfree.com/shopwithemirateskywards">Dubai Duty Free</a>
+</body>
+</html>
