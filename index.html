@@ -23,7 +23,7 @@
             box-shadow: 0 2px 8px rgba(0,0,0,0.05); 
         }
         .flex-row { display: flex; gap: 1rem; margin-bottom: 1rem; flex-wrap: wrap; }
-        .input-group { display: flex; flex-direction: column; flex: 1; min-width: 140px; }
+        .input-group { display: flex; flex-direction: column; flex: 1; min-width: 120px; }
         label { font-size: 0.85rem; font-weight: 600; margin-bottom: 0.4rem; color: #555; }
         input[type="number"], input[type="text"] { 
             padding: 0.6rem; 
@@ -69,13 +69,13 @@
         .collapsible-content.active { display: block; }
         .toggle-icon { font-size: 0.8rem; color: #666; }
 
-        /* Advanced Balance Status Styles */
         .balance-status { margin-top: 1rem; padding: 1rem; border-radius: 6px; background-color: #f8f9fa; border-left: 4px solid #ccc; }
         .status-success { border-left-color: #2e7d32; }
         .status-error { border-left-color: #d71921; }
-        .status-warning { border-left-color: #f57c00; }
+        .status-warning { border-left-color: #f57c00; background-color: #fff3e0; }
         .status-title { font-weight: bold; margin-bottom: 0.25rem; }
         .status-detail { font-size: 0.95rem; color: #444; }
+        .highlight-split { font-size: 1.1rem; margin-top: 0.5rem; color: #333; }
     </style>
 </head>
 <body>
@@ -83,9 +83,9 @@
     <h1>Emirates Skywards Calculator</h1>
 
     <div class="card">
-        <div class="collapsible-header" onclick="toggleSettings()">
+        <div class="collapsible-header" onclick="toggleSection('settings-content', 'settings-icon')">
             <h2 style="margin: 0; font-size: 1.2rem;">⚙️ Calculation Rules</h2>
-            <span class="toggle-icon" id="toggle-icon">▼ Click to edit</span>
+            <span class="toggle-icon" id="settings-icon">▼ Click to edit</span>
         </div>
         <div class="collapsible-content" id="settings-content">
             <div class="flex-row">
@@ -102,17 +102,31 @@
                     <input type="number" id="rule-rate" value="53.33" step="0.01" oninput="calculateTotal()">
                 </div>
             </div>
-            <small style="color: #666;">Changes apply immediately to your current list.</small>
         </div>
     </div>
 
     <div class="card">
-        <h2>💳 Your Balance (Advanced)</h2>
-        <div class="input-group">
-            <label>Current Skywards Miles (Optional)</label>
-            <input type="number" id="current-miles" placeholder="e.g., 25000" min="0" step="1" oninput="calculateTotal()">
+        <div class="collapsible-header" onclick="toggleSection('balance-content', 'balance-icon')">
+            <h2 style="margin: 0; font-size: 1.2rem;">💳 Your Balance & Cash Split</h2>
+            <span class="toggle-icon" id="balance-icon">▼ Click to edit</span>
         </div>
-        <div id="balance-info" class="balance-status" style="display: none;"></div>
+        <div class="collapsible-content" id="balance-content">
+            <div class="flex-row">
+                <div class="input-group">
+                    <label>Current Miles</label>
+                    <input type="number" id="current-miles" placeholder="e.g., 25000" min="0" step="1" oninput="calculateTotal()">
+                </div>
+                <div class="input-group">
+                    <label>Currency Name</label>
+                    <input type="text" id="currency-name" value="TWD" placeholder="e.g., USD" oninput="calculateTotal()">
+                </div>
+                <div class="input-group">
+                    <label>Exchange Rate</label>
+                    <input type="number" id="exchange-rate" value="8.5" step="0.0001" placeholder="e.g., 0.27" oninput="calculateTotal()">
+                </div>
+            </div>
+            <div id="balance-info" class="balance-status" style="display: none;"></div>
+        </div>
     </div>
 
     <div class="card">
@@ -147,7 +161,7 @@
     </div>
 
     <div class="total-box">
-        <h3>Total Required</h3>
+        <h3>Total Needed (If paying fully with miles)</h3>
         <div id="miles-result" class="total-val">0 Miles</div>
         <div id="aed-result" class="sub-val">Total: 0.00 AED</div>
     </div>
@@ -155,10 +169,10 @@
     <script>
         let items = [];
 
-        // Toggle Settings
-        function toggleSettings() {
-            const content = document.getElementById('settings-content');
-            const icon = document.getElementById('toggle-icon');
+        // Universal Toggle Function
+        function toggleSection(contentId, iconId) {
+            const content = document.getElementById(contentId);
+            const icon = document.getElementById(iconId);
             content.classList.toggle('active');
             icon.textContent = content.classList.contains('active') ? '▲ Hide' : '▼ Click to edit';
         }
@@ -213,7 +227,10 @@
             const minAed = parseFloat(document.getElementById('rule-min-aed').value) || 0;
             const baseMiles = parseFloat(document.getElementById('rule-base-miles').value) || 0;
             const rate = parseFloat(document.getElementById('rule-rate').value) || 0;
+            
             const currentMilesInput = document.getElementById('current-miles').value;
+            const currencyName = document.getElementById('currency-name').value.trim() || 'AED';
+            const exchangeRate = parseFloat(document.getElementById('exchange-rate').value) || 1;
             
             const totalAed = items.reduce((sum, item) => sum + item.price, 0);
             
@@ -240,7 +257,7 @@
                 milesResultEl.className = 'total-val';
             }
 
-            // Handle advanced balance logic
+            // Handle advanced balance logic & cash split
             if (currentMilesInput !== '') {
                 const currentMiles = parseFloat(currentMilesInput) || 0;
                 balanceInfoEl.style.display = 'block';
@@ -263,26 +280,34 @@
                         balanceInfoEl.className = 'balance-status status-success';
                         balanceInfoEl.innerHTML = `
                             <div class="status-title" style="color: #2e7d32;">✅ Ready to Shop</div>
-                            <div class="status-detail">You can spend up to <strong>${maxAed.toFixed(2)} AED</strong> with your current balance.</div>
+                            <div class="status-detail">You can spend up to <strong>${maxAed.toFixed(2)} AED</strong> entirely with your current balance.</div>
                         `;
                     } else if (totalAed < minAed) {
                         balanceInfoEl.className = 'balance-status status-warning';
                         balanceInfoEl.innerHTML = `
                             <div class="status-title" style="color: #f57c00;">⚠️ Minimum Not Reached</div>
-                            <div class="status-detail">Add <strong>${(minAed - totalAed).toFixed(2)} AED</strong> more to your cart to use miles. Your total allowance is ${maxAed.toFixed(2)} AED.</div>
+                            <div class="status-detail">Add <strong>${(minAed - totalAed).toFixed(2)} AED</strong> more to your cart to use your miles.</div>
                         `;
                     } else {
                         if (currentMiles >= totalMilesNeeded) {
                             balanceInfoEl.className = 'balance-status status-success';
                             balanceInfoEl.innerHTML = `
-                                <div class="status-title" style="color: #2e7d32;">✅ You have enough miles!</div>
-                                <div class="status-detail">You can add <strong>${remainingAed.toFixed(2)} AED</strong> more to your list.</div>
+                                <div class="status-title" style="color: #2e7d32;">✅ Miles Cover Everything!</div>
+                                <div class="status-detail">You can add <strong>${remainingAed.toFixed(2)} AED</strong> more to your list before needing cash.</div>
                             `;
                         } else {
-                            balanceInfoEl.className = 'balance-status status-error';
+                            // Miles + Cash Split Calculation
+                            const aedCoveredByMiles = minAed + ((currentMiles - baseMiles) / rate);
+                            const aedToPay = totalAed - aedCoveredByMiles;
+                            const cashToPay = aedToPay * exchangeRate;
+
+                            balanceInfoEl.className = 'balance-status status-warning';
                             balanceInfoEl.innerHTML = `
-                                <div class="status-title" style="color: #d71921;">❌ Not enough miles</div>
-                                <div class="status-detail">You need <strong>${(totalMilesNeeded - currentMiles).toLocaleString()}</strong> more miles to cover this list.</div>
+                                <div class="status-title" style="color: #f57c00;">🔄 Miles + Cash Option</div>
+                                <div class="status-detail">You are short <strong>${(totalMilesNeeded - currentMiles).toLocaleString()} miles</strong>. Here is your split:</div>
+                                <div class="highlight-split">
+                                    Pay <strong>${currentMiles.toLocaleString()} Miles</strong> + <strong>${cashToPay.toFixed(2)} ${currencyName}</strong>
+                                </div>
                             `;
                         }
                     }
